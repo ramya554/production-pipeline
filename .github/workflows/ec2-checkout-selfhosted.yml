@@ -1,5 +1,5 @@
 
-name: Checkout Three Tier Architecture
+name: Checkout Code to Self Hosted Runner
 
 on:
   workflow_dispatch:
@@ -9,21 +9,21 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - name: Checkout source repository
+      - name: Checkout another GitHub repository
         uses: actions/checkout@v4
         with:
           repository: iam-veeramalla/three-tier-architecture-demo
           ref: main
           path: three-tier-demo
 
-      - name: Verify downloaded repository
+      - name: Verify downloaded code
         run: |
-          echo "Repository downloaded successfully"
-          echo "Current directory:"
-          pwd
-          echo "Repository contents:"
+          echo "Code downloaded successfully!"
+          echo "Runner hostname:"
+          hostname
+          echo "Downloaded files:"
           ls -la three-tier-demo
 
-      - name: Display project files
+      - name: Display project structure
         run: |
           find three-tier-demo -maxdepth 2 -type f
