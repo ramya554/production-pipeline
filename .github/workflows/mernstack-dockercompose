@@ -1,5 +1,5 @@
 
-name: Checkout Code to Self Hosted Runner
+name: mernstack-compose
 
 on:
   workflow_dispatch:
