@@ -1,0 +1,33 @@
+
+name: Checkout Code to Self Hosted Runner
+
+on:
+  workflow_dispatch:
+
+jobs:
+  checkout:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout source repository
+        uses: actions/checkout@v4
+        with:
+          repository: https://github.com/iam-veeramalla/MERN-docker-compose
+          ref: compose
+          path: three-tier-demo
+
+      - name: Verify runner
+        run: |
+          echo "Running on self-hosted EC2"
+          hostname
+          whoami
+
+      - name: Verify downloaded code
+        run: |
+          echo "Repository downloaded successfully"
+          pwd
+          ls -la three-tier-demo
+
+      - name: Display project files
+        run: |
+          find three-tier-demo -maxdepth 2 -type f
