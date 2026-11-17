@@ -12,7 +12,7 @@ jobs:
       - name: Checkout source repository
         uses: actions/checkout@v4
         with:
-          repository: https://github.com/iam-veeramalla/MERN-docker-compose
+          repository:  iam-veeramalla/MERN-docker-compose
           ref: compose
           path: three-tier-demo
 
