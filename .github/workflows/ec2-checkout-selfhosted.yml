@@ -1,0 +1,24 @@
+name: Checkout Code on EC2
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  checkout:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Check Repository Files
+        run: |
+          echo "Repository checked out successfully"
+          pwd
+          ls -la
+
+      - name: Check Git Branch
+        run: git branch --show-current
