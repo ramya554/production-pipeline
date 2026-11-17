@@ -1,24 +1,29 @@
-name: Checkout Code on EC2
+
+name: Checkout Three Tier Architecture
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 
 jobs:
   checkout:
     runs-on: self-hosted
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout source repository
         uses: actions/checkout@v4
+        with:
+          repository: iam-veeramalla/three-tier-architecture-demo
+          ref: main
+          path: three-tier-demo
 
-      - name: Check Repository Files
+      - name: Verify downloaded repository
         run: |
-          echo "Repository checked out successfully"
+          echo "Repository downloaded successfully"
+          echo "Current directory:"
           pwd
-          ls -la
+          echo "Repository contents:"
+          ls -la three-tier-demo
 
-      - name: Check Git Branch
-        run: git branch --show-current
+      - name: Display project files
+        run: |
+          find three-tier-demo -maxdepth 2 -type f
