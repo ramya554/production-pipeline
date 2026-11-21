@@ -1,0 +1,2 @@
+name: Check repository name
+  run: echo "repo:${{ github.repository }}:ref:${{ github.ref }}"
