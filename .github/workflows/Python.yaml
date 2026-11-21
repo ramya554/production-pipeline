@@ -10,9 +10,8 @@ permissions:
   contents: read
   id-token: write
 
-# AWS and ECS configuration
 env:
-  AWS_REGION: us-east-1
+  AWS_REGION: ap-south-1
   ECR_REPOSITORY: python-app-repo
   ECS_CLUSTER: python-app-cluster
   ECS_SERVICE: python-app-service
@@ -30,24 +29,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. Install Python
+      # 2. Setup Python
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      # 3. Install application dependencies
+      # 3. Install Python dependencies
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          python -m pip install -r requirements.txt
 
       # 4. Run application tests
       - name: Run tests
         run: |
-          pytest -v
+          python -m pytest -v
 
-      # 5. Authenticate to AWS using OIDC
+      # 5. Authenticate AWS using OIDC
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -67,7 +66,7 @@ jobs:
 
       # 8. Scan Docker image using Trivy
       - name: Scan Docker image
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@0.36.0
         with:
           image-ref: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
           format: table
@@ -82,7 +81,7 @@ jobs:
           docker push \
             ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
 
-      # 10. Render ECS task definition
+      # 10. Update ECS task definition with new image
       - name: Render ECS task definition
         id: task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
@@ -91,7 +90,7 @@ jobs:
           container-name: ${{ env.CONTAINER_NAME }}
           image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
 
-      # 11. Deploy updated task definition to ECS
+      # 11. Deploy new task definition to ECS
       - name: Deploy to ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
