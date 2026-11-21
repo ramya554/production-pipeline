@@ -10,6 +10,14 @@ permissions:
   contents: read
   id-token: write
 
+# AWS and ECS configuration
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: python-app-repo
+  ECS_CLUSTER: python-app-cluster
+  ECS_SERVICE: python-app-service
+  ECS_TASK_DEFINITION: ecs/task-definition.json
+  CONTAINER_NAME: python-app-container
 
 jobs:
   build-scan-deploy:
@@ -17,6 +25,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
       # 1. Checkout source code
       - name: Checkout code
         uses: actions/checkout@v4
@@ -36,15 +45,14 @@ jobs:
       # 4. Run application tests
       - name: Run tests
         run: |
-          pip install pytest
-          pytest
+          pytest -v
 
       # 5. Authenticate to AWS using OIDC
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::112736196475:oidc-provider/token.actions.githubusercontent.com
-          
+          role-to-assume: arn:aws:iam::112736196475:role/ecr-ecs
+          aws-region: ${{ env.AWS_REGION }}
 
       # 6. Login to Amazon ECR
       - name: Login to ECR
@@ -74,7 +82,7 @@ jobs:
           docker push \
             ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
 
-      # 10. Update ECS task definition with new image URI
+      # 10. Render ECS task definition
       - name: Render ECS task definition
         id: task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
