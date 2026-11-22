@@ -24,18 +24,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
       # 1. Checkout source code
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. Setup Python
+      # 2. Install Python
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      # 3. Install Python dependencies
+      # 3. Install application dependencies
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -46,32 +45,70 @@ jobs:
         run: |
           python -m pytest -v
 
-      # 5. Debug GitHub OIDC context
+      # 5. Check GitHub repository and branch
       - name: Debug GitHub OIDC context
         run: |
           echo "Repository: $GITHUB_REPOSITORY"
           echo "Branch/ref: $GITHUB_REF"
           echo "Workflow: $GITHUB_WORKFLOW_REF"
 
-      # 6. Authenticate AWS using OIDC
+      # 6. Verify actual OIDC token claims
+      - name: Verify OIDC token claims
+        run: |
+          python - <<'PY'
+          import os
+          import json
+          import urllib.request
+          import urllib.parse
+          import base64
+
+          url = os.environ["ACTIONS_ID_TOKEN_REQUEST_URL"]
+          request_token = os.environ["ACTIONS_ID_TOKEN_REQUEST_TOKEN"]
+
+          separator = "&" if "?" in url else "?"
+          url += separator + urllib.parse.urlencode({
+              "audience": "sts.amazonaws.com"
+          })
+
+          request = urllib.request.Request(
+              url,
+              headers={"Authorization": f"Bearer {request_token}"}
+          )
+
+          with urllib.request.urlopen(request) as response:
+              token = json.loads(response.read())["value"]
+
+          payload = token.split(".")[1]
+          payload += "=" * (-len(payload) % 4)
+
+          claims = json.loads(
+              base64.urlsafe_b64decode(payload)
+          )
+
+          print("Issuer:", claims.get("iss"))
+          print("Audience:", claims.get("aud"))
+          print("Subject:", claims.get("sub"))
+          PY
+
+      # 7. Authenticate to AWS using OIDC
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::112736196475:role/ecr-ecs
           aws-region: ${{ env.AWS_REGION }}
 
-      # 7. Login to Amazon ECR
+      # 8. Login to Amazon ECR
       - name: Login to ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # 8. Build Docker image
+      # 9. Build Docker image
       - name: Build Docker image
         run: |
           docker build \
             -t ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }} .
 
-      # 9. Scan Docker image using Trivy
+      # 10. Scan Docker image using Trivy
       - name: Scan Docker image
         uses: aquasecurity/trivy-action@master
         with:
@@ -82,13 +119,13 @@ jobs:
           vuln-type: os,library
           severity: HIGH,CRITICAL
 
-      # 10. Push Docker image to ECR
+      # 11. Push Docker image to ECR
       - name: Push image to ECR
         run: |
           docker push \
             ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
 
-      # 11. Render ECS task definition
+      # 12. Update image in ECS task definition
       - name: Render ECS task definition
         id: task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
@@ -97,7 +134,7 @@ jobs:
           container-name: ${{ env.CONTAINER_NAME }}
           image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
 
-      # 12. Deploy to ECS
+      # 13. Deploy updated task definition to ECS
       - name: Deploy to ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
