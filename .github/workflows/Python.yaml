@@ -46,25 +46,32 @@ jobs:
         run: |
           python -m pytest -v
 
-      # 5. Authenticate AWS using OIDC
+      # 5. Debug GitHub OIDC context
+      - name: Debug GitHub OIDC context
+        run: |
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "Branch/ref: $GITHUB_REF"
+          echo "Workflow: $GITHUB_WORKFLOW_REF"
+
+      # 6. Authenticate AWS using OIDC
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::112736196475:role/ecr-ecs
           aws-region: ${{ env.AWS_REGION }}
 
-      # 6. Login to Amazon ECR
+      # 7. Login to Amazon ECR
       - name: Login to ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # 7. Build Docker image
+      # 8. Build Docker image
       - name: Build Docker image
         run: |
           docker build \
             -t ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }} .
 
-      # 8. Scan Docker image using Trivy
+      # 9. Scan Docker image using Trivy
       - name: Scan Docker image
         uses: aquasecurity/trivy-action@master
         with:
@@ -75,13 +82,13 @@ jobs:
           vuln-type: os,library
           severity: HIGH,CRITICAL
 
-      # 9. Push Docker image to ECR
+      # 10. Push Docker image to ECR
       - name: Push image to ECR
         run: |
           docker push \
             ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
 
-      # 10. Update ECS task definition with new image
+      # 11. Render ECS task definition
       - name: Render ECS task definition
         id: task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
@@ -90,7 +97,7 @@ jobs:
           container-name: ${{ env.CONTAINER_NAME }}
           image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
 
-      # 11. Deploy new task definition to ECS
+      # 12. Deploy to ECS
       - name: Deploy to ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
